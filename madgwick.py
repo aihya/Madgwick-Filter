@@ -14,36 +14,61 @@ class Quaternion:
 
     def __mul__(self, other):
         if isinstance(other, (int, float)):
-            self.w *= other
-            self.x *= other
-            self.y *= other
-            self.z *= other
-        elif isinstance(other, Quaternion):
-            w = (self.w * other.w) - (self.x * other.x) - (self.y * other.y) - (self.z * other.z)
-            x = (self.w * other.x) + (self.x * other.w) + (self.y * other.z) - (self.z * other.y)
-            y = (self.w * other.y) + (self.x * other.z) + (self.y * other.w) - (self.z * other.x)
-            z = (self.w * other.z) + (self.x * other.y) + (self.y * other.x) - (self.z * other.w)
-            self.w, self.x, self.y, self.z = w, x, y, z
-        else:
-            raise ValueError("Right-hand side must be either an integer, float or an instance of Quaternion")
+            return Quaternion(
+                other * self.w, 
+                other * self.x, 
+                other * self.y,
+                other * self.z
+            )
+        if isinstance(other, Quaternion):
+            w1, x1, y1, z1 = self.w, self.x, self.y, self.z
+            w2, x2, y2, z2 = other.w, other.x, other.y, other.z
+            return Quaternion(
+                (w1 * w2) - (x1 * x2) - (y1 * y2) - (z1 * z2),  # w
+                (w1 * x2) + (x1 * w2) + (y1 * z2) - (z1 * y2),  # x
+                (w1 * y2) - (x1 * z2) + (y1 * w2) + (z1 * x2),  # y
+                (w1 * z2) + (x1 * y2) - (y1 * x2) + (z1 * w2)   # z
+            )
+        return NotImplemented
+
+    def __rmul__(self, other):
+        if isinstance(other, (int, float)):
+            return Quaternion(other * self.w, other * self.x, other * self.y, other * self.z)
+        return NotImplemented
 
     def __add__(self, other):
         if not isinstance(other, Quaternion):
-            raise ValueError("Right-hand side must be either an integer, float or an instance of Quaternion")
-        self.w += other.w
-        self.x += other.x
-        self.y += other.y
-        self.z += other.z
+            return NotImplemented
+        return Quaternion(
+            self.w + other,
+            self.x + other,
+            self.y + other,
+            self.z + other
+        )
+
+    def __truediv__(self, other):
+        if not isinstance(other, (int, float)):
+            return NotImplemented
+        return Quaternion(
+            self.w / other,
+            self.x / other,
+            self.y / other,
+            self.z / other
+        )
 
     def conjugate(self):
         return Quaternion(self.w, -self.x, -self.y, -self.z)
 
     @property
+    def norm_squared(self):
+        return (self.w ** 2) + (self.x ** 2) + (self.y ** 2) + (self.z ** 2)
+
+    @property
     def norm(self):
-        return math.sqrt(self.w ** 2, self.x ** 2, self.y ** 2, self.z ** 2)
+        return math.sqrt(self.norm_squared)
 
     def inverse(self):
-        return self.conjugate() / (self.norm ** 2)
+        return self.conjugate() / self.norm_squared
 
 class Madgwick:
 
@@ -56,8 +81,9 @@ class Madgwick:
 
     def approximate(self, G, A, M=None):
         # Predict with gyroscope reading
-        qw = 0.5 * (self.quaternion * Quaternion(0, *G.v))
+        q_gyro = (1/2) * self.quaternion * Quaternion(0, *G.v)
 
         # Correction with gravity
+        
 
         # Fuse phase
