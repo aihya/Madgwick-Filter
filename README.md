@@ -9,15 +9,64 @@ The goal is to understand the algorithm by building every piece by hand (quatern
 
 ## How the filter works
 
+The sensor measures everything in its own frame, which moves with the device. The filter's job is to find the rotation (the orientation `q`) between that sensor frame and a fixed Earth frame, where the directions of gravity and the magnetic field are known.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/frames_dark.png">
+  <img alt="Diagram: a fixed Earth frame with gravity pointing down and the magnetic field pointing north and downward, next to a rotated sensor frame. The rotation between the two frames is the orientation q that the filter estimates." src="docs/images/frames_light.png">
+</picture>
+
 At each sample the filter does three things:
 
 1. **Predict with the gyroscope.** It integrates the angular rate through the quaternion derivative `q̇ = ½ · q ⊗ (0, ωx, ωy, ωz)`. This is accurate over short periods but drifts over time.
 2. **Correct with gravity (and the magnetic field).** It runs one gradient-descent step that rotates the estimate so the measured acceleration lines up with gravity. In MARG mode, the measured magnetic field must also line up with the Earth's field. This removes drift in roll and pitch (and in yaw, for MARG).
 3. **Fuse.** It blends the two using a single gain, `β`, then integrates over `dt` and normalizes the quaternion.
 
+One time step of the filter:
+
+```mermaid
+flowchart LR
+    Q0(["Previous orientation q"])
+    G["Gyroscope ω"] --> P["1 · Predict<br/>q̇ω = ½ q ⊗ (0, ω)"]
+    Q0 --> P
+    Q0 --> C
+    A["Accelerometer a"] --> C["2 · Correct<br/>one gradient-descent step<br/>on the alignment error f"]
+    M["Magnetometer m<br/>(MARG mode only)"] -.-> C
+    P --> F["3 · Fuse<br/>q̇ = q̇ω − β · ∇f / ‖∇f‖"]
+    C --> F
+    F --> I["Integrate and normalize<br/>q ← q + q̇ · dt"]
+    I --> Q1(["New orientation q<br/>(the previous one at the next sample)"])
+```
+
 The appeal of Madgwick's method is that it is cheap: there is no covariance matrix as in a Kalman filter, and there is one tunable parameter.
 
 ## Repository layout
+
+How the modules are meant to fit together, and how far along each one is:
+
+```mermaid
+flowchart LR
+    D[("data/*.csv<br/>Kaggle recordings<br/>✅ done")] --> L["load_data.py<br/>parse, convert units, dt<br/>⏳ not started"]
+    L --> R["run.py<br/>run the filter on a recording<br/>⏳ not started"]
+    subgraph core [Filter core]
+        Q["quaternion.py<br/>quaternion algebra<br/>🚧 draft in madgwick.py"] --> MW["madgwick.py<br/>Madgwick filter, IMU and MARG<br/>🚧 skeleton"]
+        FB["filter.py<br/>common filter interface<br/>⏳ empty stub"] --> MW
+    end
+    MW --> R
+    R --> E["Evaluation<br/>angular error, Euler RMSE, plots<br/>⏳ not started"]
+    D -. "reference orientation" .-> E
+    T["tests.py<br/>⏳ not started"] -.-> Q
+    T -.-> MW
+
+    classDef done fill:#dff3df,stroke:#0ca30c,color:#0b0b0b
+    classDef wip fill:#fdf0d5,stroke:#eda100,color:#0b0b0b
+    classDef todo fill:#f0efec,stroke:#898781,color:#0b0b0b,stroke-dasharray:4 3
+    class D done
+    class Q,MW wip
+    class L,R,E,FB,T todo
+```
+
+✅ done · 🚧 in progress · ⏳ not started
 
 | File | Purpose | Status |
 |---|---|---|
@@ -28,6 +77,7 @@ The appeal of Madgwick's method is that it is cheap: there is no covariance matr
 | `run.py` | Entry point: run the filter on a dataset and compare it with the reference | Empty |
 | `tests.py` | Unit tests | Empty |
 | `data/` | IMU recordings (see below) | Done |
+| `docs/` | README figures and the script that generates them (`make_figures.py`) | Done |
 
 ## Dataset
 
@@ -39,6 +89,13 @@ The data comes from the Kaggle dataset [IMU Data for AI](https://www.kaggle.com/
 | `IMU_Data_1(No Mag).csv` … `IMU_Data_3(No Mag).csv` | Gyro, Acc, Euler, Quat (13 columns) | 30,000 each |
 
 The "No Mag" files are separate recordings, not copies of the full files with the magnetometer columns removed. They are useful for testing IMU (6-axis) mode on its own.
+
+Here is the start of one recording. The device is at rest for about the first 100 samples: the gyroscope reads zero and the accelerometer reads only gravity (≈ 9.8 m/s² on the z axis). After that, the device keeps moving.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/dataset_overview_dark.png">
+  <img alt="Four stacked line charts over the first 2,000 samples of IMU_Data_5.csv: gyroscope angular rate up to about ±400 °/s, accelerometer readings between about −16 and 24 m/s², magnetometer readings between about −35 and 35 µT, and the reference Euler angles. The x, y and z axes are drawn in blue, orange and green." src="docs/images/dataset_overview_light.png">
+</picture>
 
 Column meanings and units, **inferred from the values** (to be confirmed):
 
@@ -76,6 +133,16 @@ The project is at an early stage: the structure, dataset and quaternion groundwo
 - There is no `normalize()` method yet.
 
 ## Development roadmap
+
+```mermaid
+flowchart LR
+    P1["1 · Quaternion<br/>foundations<br/>🚧"] --> P2["2 · Data<br/>loading<br/>⏳"] --> P3["3 · IMU mode<br/>(6-axis)<br/>⏳"] --> P4["4 · MARG mode<br/>(9-axis)<br/>⏳"] --> P5["5 · Evaluation<br/>⏳"] --> P6["6 · Extensions<br/>⏳"]
+
+    classDef wip fill:#fdf0d5,stroke:#eda100,color:#0b0b0b
+    classDef todo fill:#f0efec,stroke:#898781,color:#0b0b0b,stroke-dasharray:4 3
+    class P1 wip
+    class P2,P3,P4,P5,P6 todo
+```
 
 ### 1. Quaternion foundations
 - [ ] Move `Quaternion` to `quaternion.py` and fix the issues above
@@ -115,7 +182,11 @@ The project is at an early stage: the structure, dataset and quaternion groundwo
 ## Requirements
 
 - Python 3. The current code uses only the standard library (`math`).
-- NumPy and Matplotlib will probably be added for data handling and plotting.
+- NumPy and Matplotlib will probably be added for data handling and plotting. They are already needed to regenerate the README figures:
+
+```bash
+python docs/make_figures.py
+```
 
 The filter can't be run yet. The planned entry point is:
 
