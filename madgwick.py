@@ -75,6 +75,24 @@ class Quaternion:
     def inverse(self):
         return self.conjugate() / self.norm_squared
 
+    @classmethod
+    def from_axis_angle(cls, axis, angle):
+        ax, ay, az = axis
+        n = math.sqrt((ax ** 2) + (ay ** 2) + (az ** 2))
+        if n == 0:
+            raise ValueError("axis must not be the zero vector")
+
+        # Normalize to unit size
+        ax, ay, az = ax / n, ay / n, az / n
+        cos = math.cos(angle / 2)
+        sin = math.sin(angle / 2)
+        return cls(
+            cos, 
+            sin * ax, 
+            sin * ay, 
+            sin * az
+        )
+
 class Madgwick:
 
     def __init__(self):
