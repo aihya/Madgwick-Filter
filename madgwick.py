@@ -51,6 +51,24 @@ class Quaternion:
             self.z + other.z
         )
 
+    def __neg__(self):
+        return Quaternion(
+            -self.w,
+            -self.x,
+            -self.y,
+            -self.z
+        )
+
+    def __sub__(self, other):
+        if not isinstance(other, Quaternion):
+            return NotImplemented
+        return Quaternion(
+            self.w - other.w,
+            self.x - other.x,
+            self.y - other.y,
+            self.z - other.z
+        )
+
     def __truediv__(self, other):
         if not isinstance(other, (int, float)):
             return NotImplemented
