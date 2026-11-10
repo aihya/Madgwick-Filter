@@ -102,7 +102,7 @@ class Madgwick:
     def quaternion(self):
         return self._quaternion
 
-    def approximate(self, G, A, M=None):
+    def approximate(self, G: tuple, A: tuple, M=None):
         # Predict with gyroscope reading
         q_gyro = (1/2) * self.quaternion * Quaternion(0, *G.v)
 
