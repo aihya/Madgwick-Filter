@@ -15,10 +15,10 @@ class Quaternion:
     def __mul__(self, other):
         if isinstance(other, (int, float)):
             return Quaternion(
-                other * self.w, 
-                other * self.x, 
-                other * self.y,
-                other * self.z
+                self.w * other, 
+                self.x * other, 
+                self.y * other,
+                self.z * other
             )
         if isinstance(other, Quaternion):
             w1, x1, y1, z1 = self.w, self.x, self.y, self.z
@@ -32,18 +32,23 @@ class Quaternion:
         return NotImplemented
 
     def __rmul__(self, other):
-        if isinstance(other, (int, float)):
-            return Quaternion(other * self.w, other * self.x, other * self.y, other * self.z)
-        return NotImplemented
+        if not isinstance(other, (int, float)):
+            return NotImplemented
+        return Quaternion(
+            other * self.w, 
+            other * self.x, 
+            other * self.y, 
+            other * self.z
+        )
 
     def __add__(self, other):
         if not isinstance(other, Quaternion):
             return NotImplemented
         return Quaternion(
-            self.w + other,
-            self.x + other,
-            self.y + other,
-            self.z + other
+            self.w + other.w,
+            self.x + other.x,
+            self.y + other.y,
+            self.z + other.z
         )
 
     def __truediv__(self, other):
