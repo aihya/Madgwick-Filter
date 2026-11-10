@@ -93,6 +93,9 @@ class Quaternion:
             sin * az
         )
 
+    def normalize(self):
+        return self / self.norm
+
 class Madgwick:
 
     def __init__(self):
