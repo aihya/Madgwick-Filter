@@ -134,17 +134,57 @@ class Quaternion:
 class Madgwick:
 
     def __init__(self):
-        self._quaternion = Quaternion()
+        self._quaternion = Quaternion(1, (0, 0, 0))
 
     @property
     def quaternion(self):
         return self._quaternion
 
-    def approximate(self, G: tuple, A: tuple, M=None):
-        # Predict with gyroscope reading
+    def acceleration_error(self, A:tuple = None):
+        if A == None:
+            return None
+
+        # Normalize accelerometer
+        N = math.sqrt((A[0] ** 2) + (A[1] ** 2) + (A[2] ** 2))
+        if N == 0:
+            return None
+
+        A_hat = Quaternion(0, (A[0] / N, A[1] / N, A[2] / N))
+        up = Quaternion(0, 0, 0, 1)
+
+        estimate = self.quaternion.conjugate() * up * self.quaternion
+        return estimate - A_hat
+
+    def magnetic_error(self, M:tuple = None):
+        if M == None:
+            return None
+
+        # Normalize magnetometer
+        N = math.sqrt((M[0] ** 2) + (M[1] ** 2) + (M[2] ** 2))
+        if N == 0:
+            return None
+
+        M_hat = Quaternion(0, (M[0] / N, M[1] / N, M[2]/ N))
+        h = self.quaternion * M_hat * self.quaternion.conjugate()
+        b = Quaternion(0, (math.sqrt(h.x ** 2 + h.y ** 2), 0, h.z))
+
+        estimate = self.quaternion.conjugate() * b * self.quaternion
+        return estimate - M_hat
+
+    def approximate(self, G:tuple = None, A:tuple = None, M:tuple = None):
+        # Predict with gyroscope reading #####################
         q_gyro = (1/2) * self.quaternion * Quaternion(0, *G.v)
 
-        # Correction with gravity
-        
+        acc_error = self.acceleration_error(A)
+        mag_error = self.magnetic_error(M)
 
-        # Fuse phase
+        if not acc_error or not mag_error:
+            return
+
+        # Calculate the gradient of F using the Jacobian 
+        # of acceleration error and Jacobian of magnetic error
+        # 1. Run Jacobian on acceleration_error
+        # 2. Run Jacobian on magnetic_error
+        # 3. Gradient of F = Transposed Jacobian of Fg + Transposed Jacobian of Fb
+
+        # Fuse
