@@ -2,8 +2,9 @@ import math
 
 class Quaternion:
     
-    def __init__(self, w=0.0, x=0.0, y=0.0, z=0.0):
-        self.w, self.x, self.y, self.z = float(w), float(x), float(y), float(z)
+    def __init__(self, w = 0.0, v:tuple = (0.0, 0.0, 0.0)):
+        self.w, self.v = w, v
+        self.x, self.y, self.z = v[0], v[1], v[2]
 
     @property
     def v(self):
@@ -16,18 +17,22 @@ class Quaternion:
         if isinstance(other, (int, float)):
             return Quaternion(
                 self.w * other, 
-                self.x * other, 
-                self.y * other,
-                self.z * other
+                (
+                    self.x * other, 
+                    self.y * other,
+                    self.z * other
+                )
             )
         if isinstance(other, Quaternion):
             w1, x1, y1, z1 = self.w, self.x, self.y, self.z
             w2, x2, y2, z2 = other.w, other.x, other.y, other.z
             return Quaternion(
                 (w1 * w2) - (x1 * x2) - (y1 * y2) - (z1 * z2),  # w
-                (w1 * x2) + (x1 * w2) + (y1 * z2) - (z1 * y2),  # x
-                (w1 * y2) - (x1 * z2) + (y1 * w2) + (z1 * x2),  # y
-                (w1 * z2) + (x1 * y2) - (y1 * x2) + (z1 * w2)   # z
+                (
+                    (w1 * x2) + (x1 * w2) + (y1 * z2) - (z1 * y2),  # x
+                    (w1 * y2) - (x1 * z2) + (y1 * w2) + (z1 * x2),  # y
+                    (w1 * z2) + (x1 * y2) - (y1 * x2) + (z1 * w2)   # z
+                )
             )
         return NotImplemented
 
@@ -36,9 +41,11 @@ class Quaternion:
             return NotImplemented
         return Quaternion(
             other * self.w, 
-            other * self.x, 
-            other * self.y, 
-            other * self.z
+            (
+                other * self.x, 
+                other * self.y, 
+                other * self.z
+            )
         )
 
     def __add__(self, other):
@@ -46,17 +53,21 @@ class Quaternion:
             return NotImplemented
         return Quaternion(
             self.w + other.w,
-            self.x + other.x,
-            self.y + other.y,
-            self.z + other.z
+            (
+                self.x + other.x,
+                self.y + other.y,
+                self.z + other.z
+            )
         )
 
     def __neg__(self):
         return Quaternion(
             -self.w,
-            -self.x,
-            -self.y,
-            -self.z
+            (
+                -self.x,
+                -self.y,
+                -self.z
+            )
         )
 
     def __sub__(self, other):
@@ -64,9 +75,11 @@ class Quaternion:
             return NotImplemented
         return Quaternion(
             self.w - other.w,
-            self.x - other.x,
-            self.y - other.y,
-            self.z - other.z
+            (
+                self.x - other.x,
+                self.y - other.y,
+                self.z - other.z
+            )
         )
 
     def __truediv__(self, other):
@@ -74,13 +87,15 @@ class Quaternion:
             return NotImplemented
         return Quaternion(
             self.w / other,
-            self.x / other,
-            self.y / other,
-            self.z / other
+            (
+                self.x / other,
+                self.y / other,
+                self.z / other
+            )
         )
 
     def conjugate(self):
-        return Quaternion(self.w, -self.x, -self.y, -self.z)
+        return Quaternion(self.w, (-self.x, -self.y, -self.z))
 
     @property
     def norm_squared(self):
@@ -106,9 +121,11 @@ class Quaternion:
         sin = math.sin(angle / 2)
         return cls(
             cos, 
-            sin * ax, 
-            sin * ay, 
-            sin * az
+            (
+                sin * ax, 
+                sin * ay, 
+                sin * az
+            )
         )
 
     def normalize(self):
