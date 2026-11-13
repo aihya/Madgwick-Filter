@@ -141,36 +141,34 @@ class Madgwick:
     def quaternion(self):
         return self._quaternion
 
-    def acceleration_error(self, A:tuple = None):
-        if A is None:
-            return None
+    def acceleration_error(self, sample:tuple):
+        if sample is None:
+            return
 
-        # Normalize accelerometer
-        N = math.sqrt((A[0] ** 2) + (A[1] ** 2) + (A[2] ** 2))
-        if N == 0:
-            return None
+        n = math.sqrt(sum(a ** 2 for a in sample))
+        if n == 0:
+            return
 
-        A_hat = Quaternion(0, (A[0] / N, A[1] / N, A[2] / N))
-        up = Quaternion(0, (0, 0, 1))
+        a_norm = Quaternion(0, (a / n for a in sample))
+        d_norm = Quaternion(0, (0, 0, 1))
+        estimat = self.quaternion.conjugate() * d_norm * self.quaternion
+        return estimat - a_norm
 
-        estimate = self.quaternion.conjugate() * up * self.quaternion
-        return estimate - A_hat
+    def magnetic_error(self, sample:tuple):
+        if sample is None:
+            return
 
-    def magnetic_error(self, M:tuple = None):
-        if M is None:
-            return None
+        n = math.sqrt(sum(m ** 2 for m in sample))
+        if n == 0:
+            return
 
-        # Normalize magnetometer
-        N = math.sqrt((M[0] ** 2) + (M[1] ** 2) + (M[2] ** 2))
-        if N == 0:
-            return None
+        m_norm = Quaternion(0, (m / n for m in sample))
+        h = self.quaternion * m_norm * self.quaternion.conjugate()
+        b = Quaternion(0, (math.sqrt(h.x ** 2 + h.y ** 2), 0.0, h.z))
 
-        M_hat = Quaternion(0, (M[0] / N, M[1] / N, M[2]/ N))
-        h = self.quaternion * M_hat * self.quaternion.conjugate()
-        b = Quaternion(0, (math.sqrt(h.x ** 2 + h.y ** 2), 0, h.z))
+        estimat = self.quaternion.conjugate() * b * self.quaternion
+        return estimat - m_norm
 
-        estimate = self.quaternion.conjugate() * b * self.quaternion
-        return estimate - M_hat
 
     def approximate(self, G:tuple = None, A:tuple = None, M:tuple = None):
         # Predict with gyroscope reading #####################
