@@ -3,8 +3,9 @@ import math
 class Quaternion:
     
     def __init__(self, w = 0.0, v:tuple = (0.0, 0.0, 0.0)):
-        self.w, self.v = w, v
-        self.x, self.y, self.z = v[0], v[1], v[2]
+        # 'v' is a read-only property (below), built from x, y, z: don't assign it here
+        self.w = float(w)
+        self.x, self.y, self.z = float(v[0]), float(v[1]), float(v[2])
 
     @property
     def v(self):
@@ -141,7 +142,7 @@ class Madgwick:
         return self._quaternion
 
     def acceleration_error(self, A:tuple = None):
-        if A == None:
+        if A is None:
             return None
 
         # Normalize accelerometer
@@ -150,13 +151,13 @@ class Madgwick:
             return None
 
         A_hat = Quaternion(0, (A[0] / N, A[1] / N, A[2] / N))
-        up = Quaternion(0, 0, 0, 1)
+        up = Quaternion(0, (0, 0, 1))
 
         estimate = self.quaternion.conjugate() * up * self.quaternion
         return estimate - A_hat
 
     def magnetic_error(self, M:tuple = None):
-        if M == None:
+        if M is None:
             return None
 
         # Normalize magnetometer
@@ -173,13 +174,14 @@ class Madgwick:
 
     def approximate(self, G:tuple = None, A:tuple = None, M:tuple = None):
         # Predict with gyroscope reading #####################
-        q_gyro = (1/2) * self.quaternion * Quaternion(0, *G.v)
+        q_gyro = (1/2) * self.quaternion * Quaternion(0, tuple(G))
 
         acc_error = self.acceleration_error(A)
         mag_error = self.magnetic_error(M)
 
-        if not acc_error or not mag_error:
-            return
+        # A missing reading must not stop the update:
+        #   acc_error is None -> no correction this sample, use the gyro prediction alone
+        #   mag_error is None -> 6-axis mode, correct with gravity only
 
         # Calculate the gradient of F using the Jacobian 
         # of acceleration error and Jacobian of magnetic error
