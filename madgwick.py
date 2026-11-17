@@ -19,17 +19,10 @@ class Quaternion:
 
     def __mul__(self, other):
         if isinstance(other, (int, float)):
-            return Quaternion(
-                self.w * other, 
-                (
-                    self.x * other, 
-                    self.y * other,
-                    self.z * other
-                )
-            )
+            return Quaternion(self.w * other, (_ * other for _ in self.v))
         if isinstance(other, Quaternion):
-            w1, x1, y1, z1 = self.w, self.x, self.y, self.z
-            w2, x2, y2, z2 = other.w, other.x, other.y, other.z
+            w1, x1, y1, z1 = self.w, *self.v
+            w2, x2, y2, z2 = other.w, *other.v
             return Quaternion(
                 (w1 * w2) - (x1 * x2) - (y1 * y2) - (z1 * z2),  # w
                 (
@@ -43,68 +36,39 @@ class Quaternion:
     def __rmul__(self, other):
         if not isinstance(other, (int, float)):
             return NotImplemented
-        return Quaternion(
-            other * self.w, 
-            (
-                other * self.x, 
-                other * self.y, 
-                other * self.z
-            )
-        )
+        return Quaternion(other * self.w, (other * _ for _ in self.v))
 
     def __add__(self, other):
         if not isinstance(other, Quaternion):
             return NotImplemented
         return Quaternion(
-            self.w + other.w,
-            (
-                self.x + other.x,
-                self.y + other.y,
-                self.z + other.z
-            )
+            self.w + other.w, (s+o for s, o in zip(self.v, other.v))
         )
 
     def __neg__(self):
-        return Quaternion(
-            -self.w,
-            (
-                -self.x,
-                -self.y,
-                -self.z
-            )
-        )
+        return Quaternion(-self.w, (-_ for _ in self.v))
 
     def __sub__(self, other):
         if not isinstance(other, Quaternion):
             return NotImplemented
         return Quaternion(
-            self.w - other.w,
-            (
-                self.x - other.x,
-                self.y - other.y,
-                self.z - other.z
-            )
+            self.w - other.w, (s-o for s, o in zip(self.v, other.v))
         )
 
     def __truediv__(self, other):
         if not isinstance(other, (int, float)):
             return NotImplemented
         return Quaternion(
-            self.w / other,
-            (
-                self.x / other,
-                self.y / other,
-                self.z / other
-            )
+            self.w / other, (_ / other for _ in self.v)
         )
 
     @property
     def conjugate(self):
-        return Quaternion(self.w, (-self.x, -self.y, -self.z))
+        return Quaternion(self.w, (-_ for _ in self.v))
 
     @property
     def norm_squared(self):
-        return (self.w ** 2) + (self.x ** 2) + (self.y ** 2) + (self.z ** 2)
+        return (self.w ** 2) + sum(_ ** 2 for _ in self.v)
 
     @property
     def norm(self):
@@ -116,31 +80,24 @@ class Quaternion:
 
     @classmethod
     def from_axis_angle(cls, axis, angle):
-        ax, ay, az = axis
-        n = math.sqrt((ax ** 2) + (ay ** 2) + (az ** 2))
+        n = math.sqrt(sum(_ ** 2 for _ in axis))
         if n == 0:
             raise ValueError("axis must not be the zero vector")
 
         # Normalize to unit size
-        ax, ay, az = ax / n, ay / n, az / n
+        axis_norm = (_ / n for _ in axis)
         cos = math.cos(angle / 2)
         sin = math.sin(angle / 2)
-        return cls(
-            cos, 
-            (
-                sin * ax, 
-                sin * ay, 
-                sin * az
-            )
-        )
+        return cls(cos, (sin * _ for _ in axis_norm))
 
     def normalize(self):
         return self / self.norm
 
-    @property
     def sandwich(self, other:Quaternion):
         if not isinstance(other, Quaternion):
-            return NotImplemented
+            raise TypeError(
+                f"sandwich expects a Quaternion, got {type(other).__name__}"
+            )
         return self * other * self.conjugate
 
 class Madgwick:
