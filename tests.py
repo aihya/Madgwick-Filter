@@ -515,28 +515,28 @@ class TestMagError(QuaternionTestCase):
     b = (√(hx² + hy²), 0, hz)."""
 
     def test_missing_reading_returns_none(self):
-        self.assertIsNone(Madgwick().mag_error(None))
+        self.assertIsNone(Madgwick().magnetic_error(None))
 
     def test_all_zero_reading_returns_none(self):
-        self.assertIsNone(Madgwick().mag_error((0, 0, 0)))
+        self.assertIsNone(Madgwick().magnetic_error((0, 0, 0)))
 
     def test_facing_north_gives_no_error(self):
-        self.assertQuatAlmostEqual(Madgwick().mag_error(FIELD), (0, 0, 0, 0))
+        self.assertQuatAlmostEqual(Madgwick().magnetic_error(FIELD), (0, 0, 0, 0))
 
     def test_known_error_for_a_90_degree_heading_mistake(self):
         # The estimate faces north, but the sensor sees north along its y axis.
         # b keeps the reading's dip, so the error has no vertical part.
-        error = Madgwick().mag_error((0, 0.6, -0.8))
+        error = Madgwick().magnetic_error((0, 0.6, -0.8))
         self.assertQuatAlmostEqual(error, (0, 0.6, -0.6, 0))
 
     def test_size_of_the_reading_does_not_matter(self):
         f = filter_at(ORIENTATIONS["50° about a tilted axis"])
         reading = (0.2, 0.5, -0.4)
-        expected = f.mag_error(reading)
+        expected = f.magnetic_error(reading)
         for scale in (0.01, 50):  # gauss or microtesla, it shouldn't matter
             with self.subTest(scale=scale):
                 scaled = tuple(scale * m for m in reading)
-                self.assertQuatAlmostEqual(f.mag_error(scaled), expected)
+                self.assertQuatAlmostEqual(f.magnetic_error(scaled), expected)
 
     def test_correct_estimate_gives_no_error_whatever_the_dip(self):
         # b is rebuilt from every reading, so the local dip angle doesn't matter:
@@ -545,12 +545,12 @@ class TestMagError(QuaternionTestCase):
             for name, q in ORIENTATIONS.items():
                 with self.subTest(field=field, orientation=name):
                     reading = body_frame(q, field)
-                    self.assertQuatAlmostEqual(filter_at(q).mag_error(reading), (0, 0, 0, 0))
+                    self.assertQuatAlmostEqual(filter_at(q).magnetic_error(reading), (0, 0, 0, 0))
 
     def test_does_not_change_the_estimate(self):
         f = filter_at(about_axis((0, 1, 0), 30))
         before = components(f.quaternion)
-        f.mag_error((1, 2, 3))
+        f.magnetic_error((1, 2, 3))
         self.assertEqual(components(f.quaternion), before)
 
 
