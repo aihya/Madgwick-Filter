@@ -1,4 +1,4 @@
-"""Unit tests for the Quaternion class.
+"""Unit tests for the Quaternion and Madgwick classes.
 
 Run from the repository root with either of:
 
@@ -6,7 +6,7 @@ Run from the repository root with either of:
     python tests.py
 
 Floating-point results are compared with a tolerance (TOL), never with ==,
-because values like 1/30 can't be represented exactly (see q * q.inverse()).
+because values like 1/30 can't be represented exactly (see q * q.inverse).
 """
 
 import math
@@ -16,6 +16,8 @@ try:
     from quaternion import Quaternion  # planned home of the class
 except ImportError:
     from madgwick import Quaternion  # where the class lives for now
+
+from madgwick import Madgwick
 
 TOL = 1e-12
 
@@ -51,7 +53,13 @@ def dot(u, v):
 
 def rotate(q, vector):
     """Rotate a 3D vector by a unit quaternion: q ⊗ (0, v) ⊗ q*."""
-    return (q * Quaternion(0, tuple(vector)) * q.conjugate()).v
+    return (q * Quaternion(0, tuple(vector)) * q.conjugate).v
+
+
+def about_axis(axis, angle_deg):
+    """Unit quaternion for a rotation of angle_deg around a unit axis."""
+    half = math.radians(angle_deg) / 2
+    return Quaternion(math.cos(half), tuple(math.sin(half) * a for a in axis))
 
 
 class QuaternionTestCase(unittest.TestCase):
@@ -218,27 +226,27 @@ class TestAddition(QuaternionTestCase):
 class TestConjugate(QuaternionTestCase):
 
     def test_negates_the_vector_part(self):
-        self.assertQuatAlmostEqual(Quaternion(1, (2, 3, 4)).conjugate(), (1, -2, -3, -4))
+        self.assertQuatAlmostEqual(Quaternion(1, (2, 3, 4)).conjugate, (1, -2, -3, -4))
 
     def test_conjugate_twice_gives_back_the_quaternion(self):
         for s in SAMPLES:
             with self.subTest(q=s):
-                self.assertQuatAlmostEqual(quat(s).conjugate().conjugate(), s)
+                self.assertQuatAlmostEqual(quat(s).conjugate.conjugate, s)
 
     def test_conjugate_of_product_reverses_the_order(self):
         # (q ⊗ p)* = p* ⊗ q*
         q, p = quat(SAMPLES[0]), quat(SAMPLES[3])
-        self.assertQuatAlmostEqual((q * p).conjugate(), p.conjugate() * q.conjugate())
+        self.assertQuatAlmostEqual((q * p).conjugate, p.conjugate * q.conjugate)
 
     def test_product_with_conjugate_is_norm_squared(self):
         for s in SAMPLES:
             with self.subTest(q=s):
                 q = quat(s)
-                self.assertQuatAlmostEqual(q * q.conjugate(), (q.norm_squared, 0, 0, 0))
+                self.assertQuatAlmostEqual(q * q.conjugate, (q.norm_squared, 0, 0, 0))
 
     def test_does_not_modify_the_quaternion(self):
         q = Quaternion(1, (2, 3, 4))
-        q.conjugate()
+        q.conjugate
         self.assertEqual(components(q), (1, 2, 3, 4))
 
 
@@ -265,76 +273,99 @@ class TestNorm(QuaternionTestCase):
         for s in SAMPLES:
             with self.subTest(q=s):
                 q = quat(s)
-                self.assertAlmostEqual(q.conjugate().norm, q.norm, places=12)
+                self.assertAlmostEqual(q.conjugate.norm, q.norm, places=12)
 
 
 class TestInverse(QuaternionTestCase):
 
     def test_known_inverse(self):
-        self.assertQuatAlmostEqual(Quaternion(1, (2, 3, 4)).inverse(),
+        self.assertQuatAlmostEqual(Quaternion(1, (2, 3, 4)).inverse,
                                    (1 / 30, -2 / 30, -3 / 30, -4 / 30))
 
     def test_product_with_inverse_is_identity(self):
         for s in SAMPLES:
             with self.subTest(q=s):
                 q = quat(s)
-                self.assertQuatAlmostEqual(q * q.inverse(), (1, 0, 0, 0))
-                self.assertQuatAlmostEqual(q.inverse() * q, (1, 0, 0, 0))
+                self.assertQuatAlmostEqual(q * q.inverse, (1, 0, 0, 0))
+                self.assertQuatAlmostEqual(q.inverse * q, (1, 0, 0, 0))
 
     def test_inverse_of_unit_quaternion_is_its_conjugate(self):
         q = Quaternion(0.5, (-0.5, 0.5, -0.5))
-        self.assertQuatAlmostEqual(q.inverse(), q.conjugate())
+        self.assertQuatAlmostEqual(q.inverse, q.conjugate)
 
     def test_inverse_of_product_reverses_the_order(self):
         # (q ⊗ p)⁻¹ = p⁻¹ ⊗ q⁻¹
         q, p = quat(SAMPLES[0]), quat(SAMPLES[3])
-        self.assertQuatAlmostEqual((q * p).inverse(), p.inverse() * q.inverse())
+        self.assertQuatAlmostEqual((q * p).inverse, p.inverse * q.inverse)
 
     def test_zero_quaternion_has_no_inverse(self):
         with self.assertRaises(ZeroDivisionError):
-            Quaternion().inverse()
+            Quaternion().inverse
 
 
 class TestRotation(QuaternionTestCase):
     """Rotating vectors with q ⊗ (0, v) ⊗ q*, using only the class's operations."""
 
-    @staticmethod
-    def about_axis(axis, angle_deg):
-        """Unit quaternion for a rotation of angle_deg around a unit axis."""
-        half = math.radians(angle_deg) / 2
-        return Quaternion(math.cos(half), tuple(math.sin(half) * a for a in axis))
-
     def test_quarter_turn_about_z_maps_x_to_y(self):
-        q = self.about_axis((0, 0, 1), 90)
+        q = about_axis((0, 0, 1), 90)
         self.assertVecAlmostEqual(rotate(q, (1, 0, 0)), (0, 1, 0))
 
     def test_quarter_turn_about_x_maps_y_to_z(self):
-        q = self.about_axis((1, 0, 0), 90)
+        q = about_axis((1, 0, 0), 90)
         self.assertVecAlmostEqual(rotate(q, (0, 1, 0)), (0, 0, 1))
 
     def test_vector_on_the_axis_is_unchanged(self):
-        q = self.about_axis((0, 0, 1), 37)
+        q = about_axis((0, 0, 1), 37)
         self.assertVecAlmostEqual(rotate(q, (0, 0, 2.5)), (0, 0, 2.5))
 
     def test_rotation_preserves_length(self):
-        q = self.about_axis((1 / math.sqrt(3),) * 3, 123)
+        q = about_axis((1 / math.sqrt(3),) * 3, 123)
         v = (0.3, -1.2, 2.0)
         self.assertAlmostEqual(math.dist(rotate(q, v), (0, 0, 0)),
                                math.dist(v, (0, 0, 0)), places=12)
 
     def test_composing_two_quarter_turns_gives_a_half_turn(self):
-        q = self.about_axis((0, 0, 1), 90)
+        q = about_axis((0, 0, 1), 90)
         self.assertVecAlmostEqual(rotate(q * q, (1, 0, 0)), (-1, 0, 0))
 
     def test_q_and_minus_q_give_the_same_rotation(self):
-        q = self.about_axis((0, 1, 0), 60)
+        q = about_axis((0, 1, 0), 60)
         v = (1, 2, 3)
         self.assertVecAlmostEqual(rotate(q, v), rotate(-1 * q, v))
 
     def test_inverse_undoes_the_rotation(self):
-        q = self.about_axis((0, 1 / math.sqrt(2), 1 / math.sqrt(2)), 75)
+        q = about_axis((0, 1 / math.sqrt(2), 1 / math.sqrt(2)), 75)
         v = (0.5, -1.0, 2.0)
-        self.assertVecAlmostEqual(rotate(q.inverse(), rotate(q, v)), v)
+        self.assertVecAlmostEqual(rotate(q.inverse, rotate(q, v)), v)
+
+
+class TestSandwich(QuaternionTestCase):
+    """q.sandwich(p) = q ⊗ p ⊗ q*, the product that rotates p by q."""
+
+    def test_quarter_turn_about_z_maps_x_to_y(self):
+        q = about_axis((0, 0, 1), 90)
+        self.assertQuatAlmostEqual(q.sandwich(Quaternion(0, (1, 0, 0))), (0, 0, 1, 0))
+
+    def test_matches_the_written_out_product(self):
+        for s, t in zip(SAMPLES, reversed(SAMPLES)):
+            with self.subTest(q=s, p=t):
+                q, p = quat(s), quat(t)
+                self.assertQuatAlmostEqual(q.sandwich(p), q * p * q.conjugate, tol=1e-9)
+
+    def test_identity_leaves_the_argument_unchanged(self):
+        p = Quaternion(0, (0.3, -1.2, 2.0))
+        self.assertQuatAlmostEqual(Quaternion(1, (0, 0, 0)).sandwich(p), p)
+
+    def test_operands_are_not_modified(self):
+        q, p = about_axis((0, 1, 0), 40), Quaternion(0, (1, 2, 3))
+        before = (components(q), components(p))
+        q.sandwich(p)
+        self.assertEqual((components(q), components(p)), before)
+
+    def test_non_quaternion_argument_raises_type_error(self):
+        sandwich = Quaternion(1, (0, 0, 0)).sandwich  # a method, so fetching it must work
+        with self.assertRaises(TypeError):
+            sandwich((1, 2, 3))
 
 
 # The tests below cover operations the filter will need but that the class
@@ -391,6 +422,170 @@ class TestNormalize(QuaternionTestCase):
     def test_zero_quaternion_raises(self):
         with self.assertRaises(ZeroDivisionError):
             Quaternion().normalize()
+
+
+# ---------------------------------------------------------------------------
+# Madgwick filter
+# ---------------------------------------------------------------------------
+
+GRAVITY = 9.81  # m/s²; the filter only uses the direction of a reading
+
+# Earth's magnetic field where the sensor is used: pointing north (x) and
+# down (−z). Made-up values: only the direction matters.
+FIELD = (0.6, 0, -0.8)
+
+# Orientations used by several tests: a roll, a pitch, a yaw, and a mix.
+ORIENTATIONS = {
+    "roll 20°": about_axis((1, 0, 0), 20),
+    "pitch -35°": about_axis((0, 1, 0), -35),
+    "yaw 30°": about_axis((0, 0, 1), 30),
+    "50° about a tilted axis": about_axis((2 / 3, -1 / 3, 2 / 3), 50),
+}
+
+
+def body_frame(q, vector):
+    """What a sensor with orientation q reads for an earth-frame direction.
+
+    This is Rᵀ · vector, with R the rotation matrix of q, written out so that
+    it doesn't depend on the class's own products. (The filter computes the
+    same thing as q* ⊗ (0, v) ⊗ q.)
+    """
+    w, x, y, z = components(q)
+    r = ((1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y)),
+         (2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x)),
+         (2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)))
+    return tuple(sum(r[row][col] * vector[row] for row in range(3)) for col in range(3))
+
+
+def filter_at(q):
+    """A Madgwick filter whose current estimate is q.
+
+    The class has no public way to set the estimate yet, so this sets the
+    attribute behind the read-only quaternion property directly.
+    """
+    f = Madgwick()
+    f._quaternion = q
+    return f
+
+
+class TestAccelerationError(QuaternionTestCase):
+    """f_g = q* ⊗ (0, 0, 0, 1) ⊗ q − (0, â): predicted minus measured "up"."""
+
+    def test_missing_reading_returns_none(self):
+        self.assertIsNone(Madgwick().acceleration_error(None))
+
+    def test_all_zero_reading_returns_none(self):
+        self.assertIsNone(Madgwick().acceleration_error((0, 0, 0)))
+
+    def test_level_and_still_gives_no_error(self):
+        error = Madgwick().acceleration_error((0, 0, GRAVITY))
+        self.assertQuatAlmostEqual(error, (0, 0, 0, 0))
+
+    def test_known_error_for_a_20_degree_roll(self):
+        # The estimate is level, but the sensor is rolled 20° about x.
+        s, c = math.sin(math.radians(20)), math.cos(math.radians(20))
+        error = Madgwick().acceleration_error((0, GRAVITY * s, GRAVITY * c))
+        self.assertQuatAlmostEqual(error, (0, 0, -s, 1 - c))  # (0, 0, −0.342, 0.060)
+
+    def test_size_of_the_reading_does_not_matter(self):
+        f = filter_at(ORIENTATIONS["50° about a tilted axis"])
+        reading = (0.3, -1.2, 9.5)
+        expected = f.acceleration_error(reading)
+        for scale in (0.01, 100):
+            with self.subTest(scale=scale):
+                scaled = tuple(scale * a for a in reading)
+                self.assertQuatAlmostEqual(f.acceleration_error(scaled), expected)
+
+    def test_correct_estimate_gives_no_error(self):
+        for name, q in ORIENTATIONS.items():
+            with self.subTest(name):
+                reading = tuple(GRAVITY * a for a in body_frame(q, (0, 0, 1)))
+                self.assertQuatAlmostEqual(filter_at(q).acceleration_error(reading),
+                                           (0, 0, 0, 0))
+
+    def test_does_not_change_the_estimate(self):
+        f = filter_at(about_axis((0, 1, 0), 30))
+        before = components(f.quaternion)
+        f.acceleration_error((1, 2, 3))
+        self.assertEqual(components(f.quaternion), before)
+
+
+class TestMagError(QuaternionTestCase):
+    """f_b = q* ⊗ (0, b) ⊗ q − (0, m̂), with h = q ⊗ (0, m̂) ⊗ q* and
+    b = (√(hx² + hy²), 0, hz)."""
+
+    def test_missing_reading_returns_none(self):
+        self.assertIsNone(Madgwick().mag_error(None))
+
+    def test_all_zero_reading_returns_none(self):
+        self.assertIsNone(Madgwick().mag_error((0, 0, 0)))
+
+    def test_facing_north_gives_no_error(self):
+        self.assertQuatAlmostEqual(Madgwick().mag_error(FIELD), (0, 0, 0, 0))
+
+    def test_known_error_for_a_90_degree_heading_mistake(self):
+        # The estimate faces north, but the sensor sees north along its y axis.
+        # b keeps the reading's dip, so the error has no vertical part.
+        error = Madgwick().mag_error((0, 0.6, -0.8))
+        self.assertQuatAlmostEqual(error, (0, 0.6, -0.6, 0))
+
+    def test_size_of_the_reading_does_not_matter(self):
+        f = filter_at(ORIENTATIONS["50° about a tilted axis"])
+        reading = (0.2, 0.5, -0.4)
+        expected = f.mag_error(reading)
+        for scale in (0.01, 50):  # gauss or microtesla, it shouldn't matter
+            with self.subTest(scale=scale):
+                scaled = tuple(scale * m for m in reading)
+                self.assertQuatAlmostEqual(f.mag_error(scaled), expected)
+
+    def test_correct_estimate_gives_no_error_whatever_the_dip(self):
+        # b is rebuilt from every reading, so the local dip angle doesn't matter:
+        # flat (magnetic equator), the field above, and almost vertical.
+        for field in ((1, 0, 0), FIELD, (0.2, 0, -0.98)):
+            for name, q in ORIENTATIONS.items():
+                with self.subTest(field=field, orientation=name):
+                    reading = body_frame(q, field)
+                    self.assertQuatAlmostEqual(filter_at(q).mag_error(reading), (0, 0, 0, 0))
+
+    def test_does_not_change_the_estimate(self):
+        f = filter_at(about_axis((0, 1, 0), 30))
+        before = components(f.quaternion)
+        f.mag_error((1, 2, 3))
+        self.assertEqual(components(f.quaternion), before)
+
+
+class TestApproximateWithoutAccelerometer(QuaternionTestCase):
+    """approximate() when the accelerometer reading is missing: gyroscope only.
+
+    These checks hold whatever Δt, β and gyroscope units end up being.
+    """
+
+    def test_no_rotation_keeps_the_estimate(self):
+        f = Madgwick()
+        f.approximate(G=(0, 0, 0), A=None)
+        self.assertQuatAlmostEqual(f.quaternion, (1, 0, 0, 0))
+
+    def test_magnetometer_is_ignored(self):
+        # A magnetometer-only correction tilts the estimate, so without the
+        # accelerometer there must be no correction at all, even though this
+        # magnetometer reading disagrees with the estimate's heading.
+        f = Madgwick()
+        f.approximate(G=(0, 0, 0), A=None, M=(0, 0.6, -0.8))
+        self.assertQuatAlmostEqual(f.quaternion, (1, 0, 0, 0))
+
+    def test_estimate_stays_a_unit_quaternion(self):
+        f = Madgwick()
+        for _ in range(100):
+            f.approximate(G=(0.3, -0.2, 0.5), A=None)
+        self.assertAlmostEqual(f.quaternion.norm, 1.0, places=12)
+
+    def test_turning_about_z_only_changes_the_heading(self):
+        f = Madgwick()
+        f.approximate(G=(0, 0, 1), A=None)
+        w, x, y, z = components(f.quaternion)
+        self.assertAlmostEqual(x, 0, places=12)
+        self.assertAlmostEqual(y, 0, places=12)
+        self.assertGreater(z, 0)
 
 
 if __name__ == "__main__":
