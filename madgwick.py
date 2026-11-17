@@ -134,6 +134,12 @@ class Quaternion:
     def normalize(self):
         return self / self.norm
 
+    @property
+    def sandwich(self, other:Quaternion):
+        if not isinstance(other, Quaternion):
+            return NotImplemented
+        return self * other * self.conjugate
+
 class Madgwick:
 
     def __init__(self):
