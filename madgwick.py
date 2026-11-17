@@ -95,6 +95,7 @@ class Quaternion:
             )
         )
 
+    @property
     def conjugate(self):
         return Quaternion(self.w, (-self.x, -self.y, -self.z))
 
@@ -106,8 +107,9 @@ class Quaternion:
     def norm(self):
         return math.sqrt(self.norm_squared)
 
+    @property
     def inverse(self):
-        return self.conjugate() / self.norm_squared
+        return self.conjugate / self.norm_squared
 
     @classmethod
     def from_axis_angle(cls, axis, angle):
@@ -145,30 +147,30 @@ class Madgwick:
         if sample is None:
             return
 
-        n = math.sqrt(sum(a ** 2 for a in sample))
+        n = math.sqrt(sum(_ ** 2 for _ in sample))
         if n == 0:
             return
 
-        a_norm = Quaternion(0, (a / n for a in sample))
+        a_norm = Quaternion(0, (_ / n for _ in sample))
         d_norm = Quaternion(0, (0, 0, 1))
-        estimat = self.quaternion.conjugate() * d_norm * self.quaternion
-        return estimat - a_norm
+        estimate = self.quaternion.conjugate * d_norm * self.quaternion
+
+        return estimate - a_norm
 
     def magnetic_error(self, sample:tuple):
         if sample is None:
             return
 
-        n = math.sqrt(sum(m ** 2 for m in sample))
+        n = math.sqrt(sum(_ ** 2 for _ in sample))
         if n == 0:
             return
 
-        m_norm = Quaternion(0, (m / n for m in sample))
-        h = self.quaternion * m_norm * self.quaternion.conjugate()
+        m_norm = Quaternion(0, (_ / n for _ in sample))
+        h = self.quaternion * m_norm * self.quaternion.conjugate
         b = Quaternion(0, (math.sqrt(h.x ** 2 + h.y ** 2), 0.0, h.z))
 
-        estimat = self.quaternion.conjugate() * b * self.quaternion
-        return estimat - m_norm
-
+        estimate = self.quaternion.conjugate * b * self.quaternion
+        return estimate - m_norm
 
     def approximate(self, G:tuple = None, A:tuple = None, M:tuple = None):
         # Predict with gyroscope reading #####################
@@ -188,3 +190,7 @@ class Madgwick:
         # 3. Gradient of F = Transposed Jacobian of Fg + Transposed Jacobian of Fb
 
         # Fuse
+        if acc_error is None:
+            self.quaternion = self.quaternion + q_gyro.normalize()
+        elif mag_error is None:
+            self.quaternion = self.quaternion
