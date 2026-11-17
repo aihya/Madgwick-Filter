@@ -147,8 +147,13 @@ class Madgwick:
         estimate = self.quaternion.conjugate * b * self.quaternion
         return estimate - m_norm
 
-    def approximate(self, G:tuple = None, A:tuple = None, M:tuple = None):
+    def approximate(self, G:tuple = None, A:tuple = None, M:tuple = None, dt:float = 0.01):
+        # dt: time between samples in seconds. 0.01 (100 Hz) is a placeholder
+        # until load_data.py works out the real sampling rate.
+
         # Predict with gyroscope reading #####################
+        # q_gyro is the rate of change of the estimate (q̇), not a rotation:
+        # it is integrated over dt below, never normalized on its own
         q_gyro = (1/2) * self.quaternion * Quaternion(0, tuple(G))
 
         acc_error = self.acceleration_error(A)
@@ -166,6 +171,7 @@ class Madgwick:
 
         # Fuse
         if acc_error is None:
-            self.quaternion = self.quaternion + q_gyro.normalize()
+            # Integrate: q <- q + q̇·dt (the setter normalizes the result)
+            self.quaternion = self.quaternion + q_gyro * dt
         elif mag_error is None:
             self.quaternion = self.quaternion
