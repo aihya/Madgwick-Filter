@@ -109,6 +109,15 @@ class Madgwick:
     def quaternion(self):
         return self._quaternion
 
+    @quaternion.setter
+    def quaternion(self, value:Quaternion):
+        if not isinstance(value, Quaternion):
+            raise TypeError(
+                f"quaternion must be a Quaternion, got {type(value).__name__}"
+            )
+        # Replace the object (never edit the old one in place) and keep it a unit quaternion
+        self._quaternion = value.normalize()
+
     def acceleration_error(self, sample:tuple):
         if sample is None:
             return
