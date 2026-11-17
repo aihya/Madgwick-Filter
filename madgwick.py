@@ -5,7 +5,10 @@ class Quaternion:
     def __init__(self, w = 0.0, v:tuple = (0.0, 0.0, 0.0)):
         # 'v' is a read-only property (below), built from x, y, z: don't assign it here
         self.w = float(w)
-        self.x, self.y, self.z = float(v[0]), float(v[1]), float(v[2])
+        v = tuple(v)  # a generator can only be read once: collect it before checking the length
+        if len(v) != 3:
+            raise ValueError(f"v must have exactly 3 components, got {len(v)}")
+        self.x, self.y, self.z = (float(c) for c in v)
 
     @property
     def v(self):
