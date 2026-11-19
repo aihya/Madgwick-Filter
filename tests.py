@@ -468,49 +468,49 @@ def filter_at(q):
     return f
 
 
-class TestAccelerationError(QuaternionTestCase):
+class TestGravityError(QuaternionTestCase):
     """f_g = q* ⊗ (0, 0, 0, 1) ⊗ q − (0, â): predicted minus measured "up"."""
 
     def test_missing_reading_returns_none(self):
-        self.assertIsNone(Madgwick().acceleration_error(None))
+        self.assertIsNone(Madgwick().gravity_error(None))
 
     def test_all_zero_reading_returns_none(self):
-        self.assertIsNone(Madgwick().acceleration_error((0, 0, 0)))
+        self.assertIsNone(Madgwick().gravity_error((0, 0, 0)))
 
     def test_level_and_still_gives_no_error(self):
-        error = Madgwick().acceleration_error((0, 0, GRAVITY))
+        error = Madgwick().gravity_error((0, 0, GRAVITY))
         self.assertQuatAlmostEqual(error, (0, 0, 0, 0))
 
     def test_known_error_for_a_20_degree_roll(self):
         # The estimate is level, but the sensor is rolled 20° about x.
         s, c = math.sin(math.radians(20)), math.cos(math.radians(20))
-        error = Madgwick().acceleration_error((0, GRAVITY * s, GRAVITY * c))
+        error = Madgwick().gravity_error((0, GRAVITY * s, GRAVITY * c))
         self.assertQuatAlmostEqual(error, (0, 0, -s, 1 - c))  # (0, 0, −0.342, 0.060)
 
     def test_size_of_the_reading_does_not_matter(self):
         f = filter_at(ORIENTATIONS["50° about a tilted axis"])
         reading = (0.3, -1.2, 9.5)
-        expected = f.acceleration_error(reading)
+        expected = f.gravity_error(reading)
         for scale in (0.01, 100):
             with self.subTest(scale=scale):
                 scaled = tuple(scale * a for a in reading)
-                self.assertQuatAlmostEqual(f.acceleration_error(scaled), expected)
+                self.assertQuatAlmostEqual(f.gravity_error(scaled), expected)
 
     def test_correct_estimate_gives_no_error(self):
         for name, q in ORIENTATIONS.items():
             with self.subTest(name):
                 reading = tuple(GRAVITY * a for a in body_frame(q, (0, 0, 1)))
-                self.assertQuatAlmostEqual(filter_at(q).acceleration_error(reading),
+                self.assertQuatAlmostEqual(filter_at(q).gravity_error(reading),
                                            (0, 0, 0, 0))
 
     def test_does_not_change_the_estimate(self):
         f = filter_at(about_axis((0, 1, 0), 30))
         before = components(f.quaternion)
-        f.acceleration_error((1, 2, 3))
+        f.gravity_error((1, 2, 3))
         self.assertEqual(components(f.quaternion), before)
 
 
-class TestMagError(QuaternionTestCase):
+class TestMagneticError(QuaternionTestCase):
     """f_b = q* ⊗ (0, b) ⊗ q − (0, m̂), with h = q ⊗ (0, m̂) ⊗ q* and
     b = (√(hx² + hy²), 0, hz)."""
 
