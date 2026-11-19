@@ -141,7 +141,7 @@ class Madgwick:
             return
 
         m_norm = Quaternion(0, (_ / n for _ in sample))
-        h = self.quaternion * m_norm * self.quaternion.conjugate
+        h = self.quaternion.sandwich(m_norm)
         b = Quaternion(0, (math.sqrt(h.x ** 2 + h.y ** 2), 0.0, h.z))
 
         estimate = self.quaternion.conjugate * b * self.quaternion
