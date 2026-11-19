@@ -118,7 +118,7 @@ class Madgwick:
         # Replace the object (never edit the old one in place) and keep it a unit quaternion
         self._quaternion = value.normalize()
 
-    def acceleration_error(self, sample:tuple):
+    def gravity_error(self, sample:tuple):
         if sample is None:
             return
 
@@ -156,22 +156,20 @@ class Madgwick:
         # it is integrated over dt below, never normalized on its own
         q_gyro = (1/2) * self.quaternion * Quaternion(0, tuple(G))
 
-        acc_error = self.acceleration_error(A)
+        grv_error = self.gravity_error(A)
         mag_error = self.magnetic_error(M)
 
         # A missing reading must not stop the update:
-        #   acc_error is None -> no correction this sample, use the gyro prediction alone
+        #   grv_error is None -> no correction this sample, use the gyro prediction alone
         #   mag_error is None -> 6-axis mode, correct with gravity only
 
         # Calculate the gradient of F using the Jacobian 
         # of acceleration error and Jacobian of magnetic error
-        # 1. Run Jacobian on acceleration_error
+        # 1. Run Jacobian on gravity_error
         # 2. Run Jacobian on magnetic_error
         # 3. Gradient of F = Transposed Jacobian of Fg + Transposed Jacobian of Fb
 
         # Fuse
-        if acc_error is None:
-            # Integrate: q <- q + q̇·dt (the setter normalizes the result)
+        if grv_error is None:
+            # Gyroscope only: integrate q <- q + q̇·dt (the setter normalizes the result)
             self.quaternion = self.quaternion + q_gyro * dt
-        elif mag_error is None:
-            self.quaternion = self.quaternion
